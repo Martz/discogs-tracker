@@ -131,6 +131,7 @@ export interface PriceRecord {
   condition: string;
   timestamp: string;
   listing_count: number;
+  wantsCount?: number;
 }
 
 export interface ReleaseInfo {
@@ -151,4 +152,31 @@ export interface PriceTrend {
   percentage_change: number;
   trend: 'up' | 'down' | 'stable';
   price_history: PriceRecord[];
+}
+
+export interface DiscogsFolder {
+  id: number;
+  user_id: number;
+  name: string;
+  count: number;
+  created: string;
+  updated: string;
+  resource_url: string;
+}
+
+export interface DiscogsFoldersResponse {
+  folders: DiscogsFolder[];
+}
+
+export interface DiscogsWantlistItem {
+  id: number;
+  rating: number;
+  notes: string;
+  basic_information: DiscogsBasicInformation;
+  date_added: string;
+}
+
+export interface DiscogsWantlistResponse {
+  pagination: DiscogsPagination;
+  wants: DiscogsWantlistItem[];
 }

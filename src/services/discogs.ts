@@ -2,7 +2,11 @@ import type {
   DiscogsCollectionItem, 
   DiscogsCollectionResponse,
   DiscogsMarketplaceResponse,
-  DiscogsMarketplaceListing 
+  DiscogsMarketplaceListing,
+  DiscogsFolder,
+  DiscogsFoldersResponse,
+  DiscogsWantlistItem,
+  DiscogsWantlistResponse
 } from '../types/index.js';
 
 const API_BASE = 'https://api.discogs.com';
@@ -32,6 +36,12 @@ export class DiscogsService {
     return response.json() as Promise<T>;
   }
 
+  async getFolders(): Promise<DiscogsFolder[]> {
+    const url = `${API_BASE}/users/${this.username}/collection/folders`;
+    const data = await this.makeRequest<DiscogsFoldersResponse>(url);
+    return data.folders;
+  }
+
   async getCollection(): Promise<DiscogsCollectionItem[]> {
     const allItems: DiscogsCollectionItem[] = [];
     let page = 1;
@@ -53,11 +63,54 @@ export class DiscogsService {
     return allItems;
   }
 
-  async getLowestMarketplacePrice(releaseId: number): Promise<{
+  async getCollectionByFolder(folderId: number): Promise<DiscogsCollectionItem[]> {
+    const allItems: DiscogsCollectionItem[] = [];
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      const url = `${API_BASE}/users/${this.username}/collection/folders/${folderId}/releases?page=${page}&per_page=100`;
+      const data = await this.makeRequest<DiscogsCollectionResponse>(url);
+      
+      allItems.push(...data.releases);
+      hasMore = page < data.pagination.pages;
+      page++;
+
+      if (hasMore) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    return allItems;
+  }
+
+  async getWantlist(): Promise<DiscogsWantlistItem[]> {
+    const allItems: DiscogsWantlistItem[] = [];
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      const url = `${API_BASE}/users/${this.username}/wants?page=${page}&per_page=100`;
+      const data = await this.makeRequest<DiscogsWantlistResponse>(url);
+      
+      allItems.push(...data.wants);
+      hasMore = page < data.pagination.pages;
+      page++;
+
+      if (hasMore) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    return allItems;
+  }
+
+  async getMarketplaceStats(releaseId: number): Promise<{
     price: number;
     currency: string;
     condition: string;
     listingCount: number;
+    wantsCount: number;
   } | null> {
     try {
       const url = `${API_BASE}/marketplace/stats/${releaseId}`;
@@ -74,16 +127,49 @@ export class DiscogsService {
         return null;
       }
 
+      // Get wants count from release endpoint
+      let wantsCount = 0;
+      try {
+        const releaseUrl = `${API_BASE}/releases/${releaseId}`;
+        const releaseData = await this.makeRequest<{
+          community: {
+            want: number;
+            have: number;
+          };
+        }>(releaseUrl);
+        wantsCount = releaseData.community?.want || 0;
+      } catch {
+        // Ignore wants count errors
+      }
+
       return {
         price: data.lowest_price.value,
         currency: data.lowest_price.currency,
         condition: 'Various',
-        listingCount: data.num_for_sale
+        listingCount: data.num_for_sale,
+        wantsCount
       };
     } catch (error) {
       console.error(`Failed to fetch marketplace price for release ${releaseId}:`, error);
       return null;
     }
+  }
+
+  async getLowestMarketplacePrice(releaseId: number): Promise<{
+    price: number;
+    currency: string;
+    condition: string;
+    listingCount: number;
+  } | null> {
+    const stats = await this.getMarketplaceStats(releaseId);
+    if (!stats) return null;
+    
+    return {
+      price: stats.price,
+      currency: stats.currency,
+      condition: stats.condition,
+      listingCount: stats.listingCount
+    };
   }
 
   async getAllMarketplaceListings(releaseId: number): Promise<DiscogsMarketplaceListing[]> {
