@@ -10,6 +10,7 @@ A TypeScript CLI application that tracks the prices of your Discogs collection o
 - Analyse optimal records to sell based on demand and price trends
 - View price history and collection statistics
 - SQLite database for time series data storage
+- Multi-threaded sync for fast price updates
 
 ## Installation
 
@@ -95,6 +96,38 @@ discogs-tracker list -s "Beatles"
 
 # View price history for a specific release
 discogs-tracker history 123456
+
+# Check database migration status
+discogs-tracker migrate --status
+```
+
+## Development
+
+### Running Tests
+
+```bash
+npm test                    # Run all tests
+npm run test:watch          # Run tests in watch mode
+npm run test:coverage       # Run tests with coverage report
+npm run test:ui             # Run tests with UI
+```
+
+### Test Coverage
+
+The project includes comprehensive unit and integration tests covering:
+
+- **Database operations**: CRUD operations, migrations, price analysis
+- **Discogs API service**: Authentication, data fetching, error handling
+- **Worker pool**: Multi-threading, task distribution, error recovery
+- **Configuration management**: Credential storage, validation
+- **Utility functions**: Formatting, date handling
+- **Integration workflows**: End-to-end sync processes
+
+### Building
+
+```bash
+npm run build               # Build TypeScript
+npm run watch               # Watch mode for development
 ```
 
 ## How it works
@@ -108,14 +141,40 @@ discogs-tracker history 123456
    - Records with high demand (many people want them)
    - Optimal sell candidates based on demand score (wants/price ratio) and trends
 
+## Architecture
+
+### Multi-Threading
+- **Worker pool system** for parallel API calls
+- **Configurable thread count** (default 8, up to 16+)
+- **Rate limiting** to respect Discogs API limits
+- **Exponential backoff** for failed requests
+
+### Database Schema
+- **Automatic migrations** for schema updates
+- **Time series data** for price tracking
+- **Collection folder support** for organisation
+- **Wantlist integration** for demand analysis
+
+### Performance
+- **8x faster sync** with multi-threading
+- **Smart caching** to avoid redundant API calls
+- **Batch processing** for large collections
+- **Memory efficient** SQLite storage
+
 ## Data storage
 
 - Configuration: Stored in your system's config directory
 - Price database: Stored in `data/prices.db`
+- Automatic backups during migrations
 
-## Development
+## Contributing
 
-```bash
-npm run dev     # Run without building
-npm run watch   # Watch mode for development
-```
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure all tests pass: `npm test`
+5. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details

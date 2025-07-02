@@ -9,7 +9,11 @@
     "build": "tsc",
     "watch": "tsc --watch",
     "start": "node dist/cli.js",
-    "dev": "tsx src/cli.ts"
+    "dev": "tsx src/cli.ts",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "test:ui": "vitest --ui"
   },
   "keywords": ["discogs", "vinyl", "records", "price-tracking", "cli"],
   "author": "",
@@ -31,8 +35,11 @@
     "@types/cli-table": "^0.3.4",
     "@types/inquirer": "^9.0.7",
     "@types/node": "^20.0.0",
+    "@vitest/coverage-v8": "^1.2.0",
+    "@vitest/ui": "^1.2.0",
     "tsx": "^4.7.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^1.2.0"
   },
   "type": "module"
 }
