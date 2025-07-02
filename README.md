@@ -38,7 +38,20 @@ discogs-tracker sync
 
 This fetches your collection and current marketplace prices.
 
-### 3. View price trends
+### 3. View collection value
+
+```bash
+# Show total collection value and statistics
+discogs-tracker value
+
+# Show value breakdown by format (Vinyl, CD, etc.)
+discogs-tracker value -f
+
+# Show top 20 most valuable records
+discogs-tracker value -t 20
+```
+
+### 4. View price trends
 
 ```bash
 # Show records increasing in value (default: >5% change)
@@ -51,7 +64,7 @@ discogs-tracker trends -m 10
 discogs-tracker trends --all
 ```
 
-### 4. Other commands
+### 5. Other commands
 
 ```bash
 # List all records in your collection

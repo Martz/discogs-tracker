@@ -6,6 +6,7 @@ import { syncCommand } from './commands/sync.js';
 import { trendsCommand } from './commands/trends.js';
 import { listCommand } from './commands/list.js';
 import { historyCommand } from './commands/history.js';
+import { valueCommand } from './commands/value.js';
 
 program
   .name('discogs-tracker')
@@ -19,6 +20,8 @@ ${chalk.cyan('Examples:')}
   $ discogs-tracker trends -m 10        # Show records with >10% increase
   $ discogs-tracker list                # List all records
   $ discogs-tracker history 123456      # Show price history for release
+  $ discogs-tracker value               # Show collection value and stats
+  $ discogs-tracker value -f            # Show value breakdown by format
 `);
 
 program.addCommand(configCommand);
@@ -26,5 +29,6 @@ program.addCommand(syncCommand);
 program.addCommand(trendsCommand);
 program.addCommand(listCommand);
 program.addCommand(historyCommand);
+program.addCommand(valueCommand);
 
 program.parse();

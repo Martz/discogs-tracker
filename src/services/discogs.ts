@@ -29,7 +29,7 @@ export class DiscogsService {
       throw new Error(`Discogs API error: ${response.statusText}`);
     }
 
-    return response.json();
+    return response.json() as Promise<T>;
   }
 
   async getCollection(): Promise<DiscogsCollectionItem[]> {
@@ -60,20 +60,25 @@ export class DiscogsService {
     listingCount: number;
   } | null> {
     try {
-      const url = `${API_BASE}/marketplace/listings?release_id=${releaseId}&sort=price&sort_order=asc`;
-      const data = await this.makeRequest<DiscogsMarketplaceResponse>(url);
+      const url = `${API_BASE}/marketplace/stats/${releaseId}`;
+      const data = await this.makeRequest<{
+        lowest_price: {
+          value: number;
+          currency: string;
+        };
+        num_for_sale: number;
+        blocked_from_sale: boolean;
+      }>(url);
 
-      if (data.listings.length === 0) {
+      if (!data.lowest_price || data.num_for_sale === 0) {
         return null;
       }
 
-      const lowestListing = data.listings[0];
-      
       return {
-        price: lowestListing.price.value,
-        currency: lowestListing.price.currency,
-        condition: lowestListing.condition,
-        listingCount: data.pagination.items
+        price: data.lowest_price.value,
+        currency: data.lowest_price.currency,
+        condition: 'Various',
+        listingCount: data.num_for_sale
       };
     } catch (error) {
       console.error(`Failed to fetch marketplace price for release ${releaseId}:`, error);
