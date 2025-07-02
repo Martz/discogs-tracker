@@ -98,7 +98,7 @@ discogs-tracker list -s "Beatles"
 discogs-tracker history 123456
 
 # Check database migration status
-discogs-tracker migrate --status
+discogs-tracker migrate -s
 ```
 
 ## Development
@@ -128,6 +128,7 @@ The project includes comprehensive unit and integration tests covering:
 ```bash
 npm run build               # Build TypeScript
 npm run watch               # Watch mode for development
+npm run dev                 # Run without building (uses tsx)
 ```
 
 ## How it works
@@ -163,9 +164,11 @@ npm run watch               # Watch mode for development
 
 ## Data storage
 
-- Configuration: Stored in your system's config directory
-- Price database: Stored in `data/prices.db`
-- Automatic backups during migrations
+- **Configuration**: Stored in your system's config directory:
+  - Linux/macOS: `~/.config/discogs-tracker/`
+  - Windows: `%APPDATA%/discogs-tracker/`
+- **Price database**: Stored in `data/prices.db` (relative to project directory)
+- **Automatic backups**: Created during database migrations in `data/` directory
 
 ## Contributing
 

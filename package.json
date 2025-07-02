@@ -1,7 +1,7 @@
 {
   "name": "discogs-price-tracker",
   "version": "1.0.0",
-  "description": "CLI tool to track Discogs collection prices over time",
+  "description": "CLI tool to track Discogs collection prices over time with multi-threaded sync and demand analysis",
   "bin": {
     "discogs-tracker": "./dist/cli.js"
   },
@@ -15,7 +15,7 @@
     "test:coverage": "vitest --coverage",
     "test:ui": "vitest --ui"
   },
-  "keywords": ["discogs", "vinyl", "records", "price-tracking", "cli"],
+  "keywords": ["discogs", "vinyl", "records", "price-tracking", "cli", "collection-tracker", "marketplace", "demand-analysis", "typescript", "sqlite"],
   "author": "",
   "license": "MIT",
   "dependencies": {

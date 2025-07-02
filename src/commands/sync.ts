@@ -8,12 +8,18 @@ import { formatDateTime } from '../utils/formatter.js';
 import { WorkerPool, type WorkerTask } from '../utils/worker-pool.js';
 import type { ReleaseInfo } from '../types/index.js';
 
+/**
+ * Data structure for price fetching tasks sent to worker threads
+ */
 interface PriceTaskData {
   releaseId: number;
   token: string;
   username: string;
 }
 
+/**
+ * Result data structure returned by worker threads after fetching price information
+ */
 interface PriceResultData {
   releaseId: number;
   price: number;

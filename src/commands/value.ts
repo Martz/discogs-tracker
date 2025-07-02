@@ -4,6 +4,9 @@ import ora from 'ora';
 import { PriceDatabase } from '../db/database.js';
 import { formatCurrency } from '../utils/formatter.js';
 
+/**
+ * Statistical information about the collection's value and pricing
+ */
 interface CollectionStats {
   totalRecords: number;
   recordsWithPrice: number;
@@ -11,10 +14,12 @@ interface CollectionStats {
   totalValue: number;
   averageValue: number;
   medianValue: number;
+  /** Array of most valuable records with their pricing information */
   mostValuable: Array<{
     release: any;
     price: number;
   }>;
+  /** Map of format types to their collective value and count statistics */
   valueByFormat: Map<string, { count: number; value: number }>;
 }
 

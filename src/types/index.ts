@@ -144,12 +144,17 @@ export interface ReleaseInfo {
   added_date: string;
 }
 
+/**
+ * Represents price trend analysis for a release over time
+ * Trends are calculated by comparing current price with previous price data
+ */
 export interface PriceTrend {
   release: ReleaseInfo;
   current_price: number;
   previous_price: number;
   price_change: number;
   percentage_change: number;
+  /** Trend direction: 'up' for increasing, 'down' for decreasing, 'stable' for no significant change */
   trend: 'up' | 'down' | 'stable';
   price_history: PriceRecord[];
 }
