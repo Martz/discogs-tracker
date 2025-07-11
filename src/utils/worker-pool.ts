@@ -2,6 +2,7 @@ import { Worker } from 'worker_threads';
 import { cpus } from 'os';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { debugWorker, debug } from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -28,14 +29,17 @@ export class WorkerPool<TaskData, ResultData> {
   constructor(workerScript: string, maxWorkers?: number) {
     this.workerScript = join(__dirname, '../workers', workerScript);
     this.maxWorkers = maxWorkers || Math.min(cpus().length, 8); // Limit to 8 for API rate limiting
+    debug(`Initializing worker pool with ${this.maxWorkers} workers for script: ${workerScript}`);
     this.initializeWorkers();
   }
 
   private initializeWorkers(): void {
+    debugWorker(`Creating ${this.maxWorkers} worker threads`);
     for (let i = 0; i < this.maxWorkers; i++) {
       const worker = new Worker(this.workerScript);
       
       worker.on('message', (message: WorkerResult<ResultData>) => {
+        debugWorker(`Worker ${i} completed task: ${message.id}`, i);
         this.busyWorkers.delete(i);
         this.processNextTask();
         

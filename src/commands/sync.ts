@@ -6,6 +6,7 @@ import { PriceDatabase } from '../db/database.js';
 import { getDiscogsCredentials, isConfigured } from '../utils/config.js';
 import { formatDateTime } from '../utils/formatter.js';
 import { WorkerPool, type WorkerTask } from '../utils/worker-pool.js';
+import { debug, debugTiming } from '../utils/logger.js';
 import type { ReleaseInfo } from '../types/index.js';
 
 /**
@@ -36,12 +37,16 @@ export const syncCommand = new Command('sync')
   .option('-t, --threads <number>', 'Number of worker threads to use', parseFloat, 8)
   .option('-b, --batch-size <number>', 'Batch size for parallel processing', parseFloat, 20)
   .action(async (options) => {
+    const startTime = Date.now();
+    debug(`Starting sync command with options: ${JSON.stringify(options)}`);
+    
     if (!isConfigured()) {
       console.error(chalk.red('\n✗ Please configure your credentials first using: discogs-tracker config\n'));
       process.exit(1);
     }
 
     const { token, username } = getDiscogsCredentials();
+    debug(`Initializing services for user: ${username}`);
     const discogs = new DiscogsService(token, username);
     const db = new PriceDatabase();
     
@@ -50,7 +55,9 @@ export const syncCommand = new Command('sync')
     try {
       // Get folders first
       spinner.start('Fetching collection folders...');
+      const foldersStartTime = Date.now();
       const folders = await discogs.getFolders();
+      debugTiming('Folder fetch', foldersStartTime);
       spinner.succeed(`Found ${folders.length} folders`);
 
       // Sync all folders (not just "All")
@@ -176,6 +183,7 @@ export const syncCommand = new Command('sync')
       }
       
       console.log(chalk.green(`\n✓ Sync completed at ${formatDateTime(new Date())}\n`));
+      debugTiming('Complete sync operation', startTime);
     } catch (error) {
       spinner.fail('Sync failed');
       console.error(chalk.red(`\nError: ${error}\n`));

@@ -8,6 +8,7 @@ import type {
   DiscogsWantlistItem,
   DiscogsWantlistResponse
 } from '../types/index.js';
+import { debugApi, debug } from '../utils/logger.js';
 
 const API_BASE = 'https://api.discogs.com';
 const USER_AGENT = 'DiscogsCollectionTracker/1.0';
@@ -22,6 +23,8 @@ export class DiscogsService {
   }
 
   private async makeRequest<T>(url: string): Promise<T> {
+    debugApi('GET', url);
+    
     const response = await fetch(url, {
       headers: {
         'Authorization': `Discogs token=${this.token}`,
@@ -30,24 +33,30 @@ export class DiscogsService {
     });
 
     if (!response.ok) {
+      debug(`API request failed: ${response.status} ${response.statusText}`);
       throw new Error(`Discogs API error: ${response.statusText}`);
     }
 
+    debugApi('GET', url, { status: response.status });
     return response.json() as Promise<T>;
   }
 
   async getFolders(): Promise<DiscogsFolder[]> {
+    debug('Fetching collection folders...');
     const url = `${API_BASE}/users/${this.username}/collection/folders`;
     const data = await this.makeRequest<DiscogsFoldersResponse>(url);
+    debug(`Retrieved ${data.folders.length} folders`);
     return data.folders;
   }
 
   async getCollection(): Promise<DiscogsCollectionItem[]> {
+    debug('Fetching complete collection...');
     const allItems: DiscogsCollectionItem[] = [];
     let page = 1;
     let hasMore = true;
 
     while (hasMore) {
+      debug(`Fetching collection page ${page}...`);
       const url = `${API_BASE}/users/${this.username}/collection/folders/0/releases?page=${page}&per_page=100`;
       const data = await this.makeRequest<DiscogsCollectionResponse>(url);
       
@@ -56,19 +65,23 @@ export class DiscogsService {
       page++;
 
       if (hasMore) {
+        debug(`Waiting 1s before next page (rate limiting)...`);
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
+    debug(`Retrieved ${allItems.length} total collection items`);
     return allItems;
   }
 
   async getCollectionByFolder(folderId: number): Promise<DiscogsCollectionItem[]> {
+    debug(`Fetching collection from folder ${folderId}...`);
     const allItems: DiscogsCollectionItem[] = [];
     let page = 1;
     let hasMore = true;
 
     while (hasMore) {
+      debug(`Fetching folder ${folderId} page ${page}...`);
       const url = `${API_BASE}/users/${this.username}/collection/folders/${folderId}/releases?page=${page}&per_page=100`;
       const data = await this.makeRequest<DiscogsCollectionResponse>(url);
       

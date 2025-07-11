@@ -1,6 +1,14 @@
 #!/usr/bin/env node
 import { program } from '@commander-js/extra-typings';
 import chalk from 'chalk';
+import { setDebugMode } from './utils/logger.js';
+
+// Check for debug flag early and enable debug mode
+const debugIndex = process.argv.indexOf('--debug') >= 0 || process.argv.indexOf('-d') >= 0;
+if (debugIndex) {
+  setDebugMode(true);
+}
+
 import { configCommand } from './commands/config.js';
 import { syncCommand } from './commands/sync.js';
 import { trendsCommand } from './commands/trends.js';
@@ -14,6 +22,7 @@ program
   .name('discogs-tracker')
   .description('Track prices of your Discogs collection over time')
   .version('1.0.0')
+  .option('-d, --debug', 'Enable debug mode for verbose logging')
   .addHelpText('after', `
 ${chalk.cyan('Examples:')}
   $ discogs-tracker config              # Configure credentials
@@ -38,4 +47,5 @@ program.addCommand(valueCommand);
 program.addCommand(demandCommand);
 program.addCommand(migrateCommand);
 
+// Parse arguments
 program.parse();
