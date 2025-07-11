@@ -6,11 +6,24 @@ import { createCollectionTable } from '../utils/formatter.js';
 export const listCommand = new Command('list')
   .description('List all releases in your collection')
   .option('-s, --search <query>', 'Search by artist or title')
+  .option('-f, --format <format>', 'Filter by format (e.g., "Vinyl", "CD")')
+  .option('--vinyl', 'Show only vinyl records')
+  .option('--cd', 'Show only CD releases')
   .action(async (options) => {
     const db = new PriceDatabase();
 
     try {
-      let releases = db.getAllReleases();
+      // Determine format filter
+      let formatFilter: string | undefined;
+      if (options.vinyl) {
+        formatFilter = 'Vinyl';
+      } else if (options.cd) {
+        formatFilter = 'CD';
+      } else if (options.format) {
+        formatFilter = options.format;
+      }
+
+      let releases = db.getAllReleases(formatFilter);
       
       if (options.search) {
         const query = options.search.toLowerCase();
@@ -21,11 +34,13 @@ export const listCommand = new Command('list')
       }
 
       if (releases.length === 0) {
-        console.log(chalk.yellow('\nNo releases found\n'));
+        const filterDesc = formatFilter ? ` matching format "${formatFilter}"` : '';
+        console.log(chalk.yellow(`\nNo releases found${filterDesc}\n`));
         return;
       }
 
-      console.log(chalk.cyan(`\nFound ${releases.length} releases:\n`));
+      const formatDesc = formatFilter ? ` (${formatFilter})` : '';
+      console.log(chalk.cyan(`\nFound ${releases.length} releases${formatDesc}:\n`));
       console.log(createCollectionTable(releases));
       console.log();
     } catch (error) {

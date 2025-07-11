@@ -8,6 +8,7 @@ A TypeScript CLI application that tracks the prices of your Discogs collection o
 - Track marketplace prices and wants count over time
 - Identify records with increasing values and high demand
 - Analyse optimal records to sell based on demand and price trends
+- **Filter analysis by format** - track vinyl records and CDs separately
 - View price history and collection statistics
 - SQLite database for time series data storage
 - Multi-threaded sync for fast price updates
@@ -67,6 +68,15 @@ discogs-tracker trends -m 10
 
 # Show all price changes (including decreases)
 discogs-tracker trends --all
+
+# Show only vinyl price trends
+discogs-tracker trends --vinyl
+
+# Show only CD price trends
+discogs-tracker trends --cd
+
+# Show trends for specific format
+discogs-tracker trends -f "Cassette"
 ```
 
 ### 5. Demand analysis
@@ -83,6 +93,12 @@ discogs-tracker demand -t demand
 
 # Show only sell candidates
 discogs-tracker demand -t sell
+
+# Show vinyl demand analysis only
+discogs-tracker demand --vinyl
+
+# Show CD demand analysis only
+discogs-tracker demand --cd
 ```
 
 ### 6. Other commands
@@ -93,6 +109,15 @@ discogs-tracker list
 
 # Search for specific records
 discogs-tracker list -s "Beatles"
+
+# List only vinyl records
+discogs-tracker list --vinyl
+
+# List only CD releases
+discogs-tracker list --cd
+
+# List specific format
+discogs-tracker list -f "Cassette"
 
 # View price history for a specific release
 discogs-tracker history 123456

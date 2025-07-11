@@ -10,17 +10,32 @@ export const demandCommand = new Command('demand')
   .option('-p, --min-price-change <number>', 'Minimum price change percentage', parseFloat, 0)
   .option('-l, --limit <number>', 'Number of results to show', parseFloat, 20)
   .option('-t, --type <type>', 'Analysis type: demand, sell, or both', 'both')
+  .option('-f, --format <format>', 'Filter by format (e.g., "Vinyl", "CD")')
+  .option('--vinyl', 'Show only vinyl records')
+  .option('--cd', 'Show only CD releases')
   .action(async (options) => {
     const db = new PriceDatabase();
 
     try {
+      // Determine format filter
+      let formatFilter: string | undefined;
+      if (options.vinyl) {
+        formatFilter = 'Vinyl';
+      } else if (options.cd) {
+        formatFilter = 'CD';
+      } else if (options.format) {
+        formatFilter = options.format;
+      }
+
+      const formatDesc = formatFilter ? ` (${formatFilter})` : '';
+
       if (options.type === 'demand' || options.type === 'both') {
-        console.log(chalk.cyan(`\n🔥 High Demand Records (>= ${options.minWants} wants)\n`));
+        console.log(chalk.cyan(`\n🔥 High Demand Records${formatDesc} (>= ${options.minWants} wants)\n`));
         
-        const highDemand = db.getHighDemandReleases(options.minWants);
+        const highDemand = db.getHighDemandReleases(options.minWants, formatFilter);
         
         if (highDemand.length === 0) {
-          console.log(chalk.yellow(`No records found with >= ${options.minWants} wants\n`));
+          console.log(chalk.yellow(`No records found with >= ${options.minWants} wants${formatDesc}\n`));
         } else {
           const demandTable = new Table({
             head: ['Artist', 'Title', 'Price', 'Wants', 'Demand Score'],
@@ -44,16 +59,17 @@ export const demandCommand = new Command('demand')
       }
 
       if (options.type === 'sell' || options.type === 'both') {
-        console.log(chalk.cyan(`\n💰 Optimal Sell Candidates\n`));
+        console.log(chalk.cyan(`\n💰 Optimal Sell Candidates${formatDesc}\n`));
         
         const sellCandidates = db.getOptimalSellCandidates({
           minWantsCount: options.minWants,
           minPriceChange: options.minPriceChange,
-          limit: options.limit
+          limit: options.limit,
+          format: formatFilter
         });
 
         if (sellCandidates.length === 0) {
-          console.log(chalk.yellow(`No optimal sell candidates found with your criteria\n`));
+          console.log(chalk.yellow(`No optimal sell candidates found with your criteria${formatDesc}\n`));
         } else {
           const sellTable = new Table({
             head: ['Artist', 'Title', 'Price', 'Wants', 'Price Change', 'Sell Score'],

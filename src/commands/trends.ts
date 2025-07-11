@@ -9,18 +9,32 @@ export const trendsCommand = new Command('trends')
   .description('Show records with increasing prices')
   .option('-m, --min-change <percent>', 'Minimum price change percentage', parseFloat)
   .option('-a, --all', 'Show all price changes (including decreases)')
+  .option('-f, --format <format>', 'Filter by format (e.g., "Vinyl", "CD")')
+  .option('--vinyl', 'Show only vinyl records')
+  .option('--cd', 'Show only CD releases')
   .action(async (options) => {
     const db = new PriceDatabase();
     const { minPriceChangePercent } = getTrackingConfig();
     const minChange = options.minChange || minPriceChangePercent;
 
     try {
+      // Determine format filter
+      let formatFilter: string | undefined;
+      if (options.vinyl) {
+        formatFilter = 'Vinyl';
+      } else if (options.cd) {
+        formatFilter = 'CD';
+      } else if (options.format) {
+        formatFilter = options.format;
+      }
+
       const releases = options.all 
-        ? db.getReleasesWithPriceChange(minChange)
-        : db.getIncreasingValueReleases(minChange);
+        ? db.getReleasesWithPriceChange(minChange, formatFilter)
+        : db.getIncreasingValueReleases(minChange, formatFilter);
 
       if (releases.length === 0) {
-        console.log(chalk.yellow(`\nNo releases found with price change >= ${minChange}%\n`));
+        const filterDesc = formatFilter ? ` for ${formatFilter}` : '';
+        console.log(chalk.yellow(`\nNo releases found with price change >= ${minChange}%${filterDesc}\n`));
         return;
       }
 
@@ -39,7 +53,8 @@ export const trendsCommand = new Command('trends')
         };
       });
 
-      console.log(chalk.cyan(`\n${options.all ? 'All Price Changes' : 'Increasing Value Records'} (>= ${minChange}% change):\n`));
+      const formatDesc = formatFilter ? ` (${formatFilter})` : '';
+      console.log(chalk.cyan(`\n${options.all ? 'All Price Changes' : 'Increasing Value Records'}${formatDesc} (>= ${minChange}% change):\n`));
       console.log(createPriceTrendsTable(trends));
 
       const totalPotentialProfit = trends

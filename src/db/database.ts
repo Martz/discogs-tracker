@@ -131,21 +131,28 @@ export class PriceDatabase {
     return stmt.get(releaseId) as ReleaseInfo | null;
   }
 
-  getAllReleases(): ReleaseInfo[] {
-    const stmt = this.db.prepare(`
-      SELECT * FROM releases ORDER BY artist, title
-    `);
+  getAllReleases(format?: string): ReleaseInfo[] {
+    let query = `SELECT * FROM releases`;
+    const params: any[] = [];
     
-    return stmt.all() as ReleaseInfo[];
+    if (format) {
+      query += ` WHERE format LIKE ?`;
+      params.push(`%${format}%`);
+    }
+    
+    query += ` ORDER BY artist, title`;
+    
+    const stmt = this.db.prepare(query);
+    return stmt.all(...params) as ReleaseInfo[];
   }
 
-  getReleasesWithPriceChange(minChangePercent: number = 5): Array<{
+  getReleasesWithPriceChange(minChangePercent: number = 5, format?: string): Array<{
     release: ReleaseInfo;
     current_price: number;
     previous_price: number;
     change_percent: number;
   }> {
-    const stmt = this.db.prepare(`
+    let baseQuery = `
       WITH latest_prices AS (
         SELECT 
           release_id,
@@ -165,26 +172,56 @@ export class PriceDatabase {
         WHERE l1.rn = 1 AND l2.rn = 2
       )
       SELECT 
-        r.*,
+        r.id as release_id,
+        r.title as release_title,
+        r.artist as release_artist,
+        r.year as release_year,
+        r.format as release_format,
+        r.thumb_url as release_thumb_url,
+        r.added_date as release_added_date,
         pc.current_price,
         pc.previous_price,
         pc.change_percent
       FROM releases r
       JOIN price_comparison pc ON r.id = pc.release_id
-      WHERE ABS(pc.change_percent) >= ?
-      ORDER BY pc.change_percent DESC
-    `);
+      WHERE ABS(pc.change_percent) >= ?`;
     
-    return stmt.all(minChangePercent) as any[];
+    const params: any[] = [minChangePercent];
+    
+    if (format) {
+      baseQuery += ` AND r.format LIKE ?`;
+      params.push(`%${format}%`);
+    }
+    
+    baseQuery += ` ORDER BY pc.change_percent DESC`;
+    
+    const stmt = this.db.prepare(baseQuery);
+    const results = stmt.all(...params) as any[];
+    
+    // Transform flat results into nested structure
+    return results.map(row => ({
+      release: {
+        id: row.release_id,
+        title: row.release_title,
+        artist: row.release_artist,
+        year: row.release_year,
+        format: row.release_format,
+        thumb_url: row.release_thumb_url,
+        added_date: row.release_added_date
+      },
+      current_price: row.current_price,
+      previous_price: row.previous_price,
+      change_percent: row.change_percent
+    }));
   }
 
-  getIncreasingValueReleases(minChangePercent: number = 5): Array<{
+  getIncreasingValueReleases(minChangePercent: number = 5, format?: string): Array<{
     release: ReleaseInfo;
     current_price: number;
     previous_price: number;
     change_percent: number;
   }> {
-    const results = this.getReleasesWithPriceChange(minChangePercent);
+    const results = this.getReleasesWithPriceChange(minChangePercent, format);
     return results.filter(r => r.change_percent > 0);
   }
 
@@ -204,13 +241,13 @@ export class PriceDatabase {
     return result.count;
   }
 
-  getHighDemandReleases(minWantsCount: number = 100): Array<{
+  getHighDemandReleases(minWantsCount: number = 100, format?: string): Array<{
     release: ReleaseInfo;
     currentPrice: number;
     wantsCount: number;
     demandScore: number;
   }> {
-    const stmt = this.db.prepare(`
+    let baseQuery = `
       WITH latest_prices AS (
         SELECT 
           release_id,
@@ -222,7 +259,13 @@ export class PriceDatabase {
       ),
       demand_analysis AS (
         SELECT 
-          r.*,
+          r.id as release_id,
+          r.title as release_title,
+          r.artist as release_artist,
+          r.year as release_year,
+          r.format as release_format,
+          r.thumb_url as release_thumb_url,
+          r.added_date as release_added_date,
           lp.price as current_price,
           lp.wants_count,
           ci.folder_name,
@@ -232,19 +275,45 @@ export class PriceDatabase {
         JOIN collection_items ci ON r.id = ci.release_id
         WHERE lp.rn = 1 
           AND lp.wants_count >= ?
-          AND ci.folder_name = 'All'
+          AND ci.folder_name = 'All'`;
+    
+    const params: any[] = [minWantsCount];
+    
+    if (format) {
+      baseQuery += ` AND r.format LIKE ?`;
+      params.push(`%${format}%`);
+    }
+    
+    baseQuery += `
       )
       SELECT * FROM demand_analysis
-      ORDER BY demand_score DESC
-    `);
+      ORDER BY demand_score DESC`;
     
-    return stmt.all(minWantsCount) as any[];
+    const stmt = this.db.prepare(baseQuery);
+    const results = stmt.all(...params) as any[];
+    
+    // Transform flat results into nested structure
+    return results.map(row => ({
+      release: {
+        id: row.release_id,
+        title: row.release_title,
+        artist: row.release_artist,
+        year: row.release_year,
+        format: row.release_format,
+        thumb_url: row.release_thumb_url,
+        added_date: row.release_added_date
+      },
+      currentPrice: row.current_price,
+      wantsCount: row.wants_count,
+      demandScore: row.demand_score
+    }));
   }
 
   getOptimalSellCandidates(options: {
     minPriceChange?: number;
     minWantsCount?: number;
     limit?: number;
+    format?: string;
   } = {}): Array<{
     release: ReleaseInfo;
     currentPrice: number;
@@ -257,8 +326,9 @@ export class PriceDatabase {
     const minPriceChange = options.minPriceChange || 0;
     const minWantsCount = options.minWantsCount || 50;
     const limit = options.limit || 20;
+    const format = options.format;
 
-    const stmt = this.db.prepare(`
+    let baseQuery = `
       WITH latest_prices AS (
         SELECT 
           release_id,
@@ -281,7 +351,13 @@ export class PriceDatabase {
       ),
       sell_analysis AS (
         SELECT 
-          r.*,
+          r.id as release_id,
+          r.title as release_title,
+          r.artist as release_artist,
+          r.year as release_year,
+          r.format as release_format,
+          r.thumb_url as release_thumb_url,
+          r.added_date as release_added_date,
           pt.current_price,
           pt.previous_price,
           pt.wants_count,
@@ -298,14 +374,44 @@ export class PriceDatabase {
         JOIN collection_items ci ON r.id = ci.release_id
         WHERE pt.wants_count >= ?
           AND COALESCE(pt.price_change_percent, 0) >= ?
-          AND ci.folder_name = 'All'
+          AND ci.folder_name = 'All'`;
+    
+    const params: any[] = [minWantsCount, minPriceChange];
+    
+    if (format) {
+      baseQuery += ` AND r.format LIKE ?`;
+      params.push(`%${format}%`);
+    }
+    
+    baseQuery += `
       )
       SELECT * FROM sell_analysis
       ORDER BY sell_score DESC
-      LIMIT ?
-    `);
+      LIMIT ?`;
     
-    return stmt.all(minWantsCount, minPriceChange, limit) as any[];
+    params.push(limit);
+    
+    const stmt = this.db.prepare(baseQuery);
+    const results = stmt.all(...params) as any[];
+    
+    // Transform flat results into nested structure
+    return results.map(row => ({
+      release: {
+        id: row.release_id,
+        title: row.release_title,
+        artist: row.release_artist,
+        year: row.release_year,
+        format: row.release_format,
+        thumb_url: row.release_thumb_url,
+        added_date: row.release_added_date
+      },
+      currentPrice: row.current_price,
+      purchasePrice: row.previous_price,
+      wantsCount: row.wants_count,
+      priceChange: row.price_change_percent,
+      demandScore: row.demand_score,
+      sellScore: row.sell_score
+    }));
   }
 
   close(): void {
