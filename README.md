@@ -1,6 +1,6 @@
 # Discogs Price Tracker
 
-A TypeScript CLI application that tracks the prices of your Discogs collection over time, helping you identify records that are increasing in value.
+A CLI application that tracks the prices of your Discogs collection over time, helping you identify records that are increasing in value. Available in both TypeScript (Node.js) and Rust implementations for maximum performance and compatibility.
 
 ## Features
 
@@ -13,6 +13,18 @@ A TypeScript CLI application that tracks the prices of your Discogs collection o
 - Multi-threaded sync for fast price updates
 
 ## Installation
+
+### Rust Version (Recommended for Performance)
+
+```bash
+# Build the Rust version
+cargo build --release
+
+# Install locally (makes 'discogs-tracker' available globally)
+cargo install --path .
+```
+
+### TypeScript Version
 
 ```bash
 npm install
@@ -103,7 +115,28 @@ discogs-tracker migrate -s
 
 ## Development
 
-### Running Tests
+### Rust Version
+
+```bash
+# Check compilation
+cargo check
+
+# Build debug version
+cargo build
+
+# Build optimized release version
+cargo build --release
+
+# Run tests
+cargo test
+
+# Run with development build
+cargo run -- --help
+```
+
+### TypeScript Version
+
+#### Running Tests
 
 ```bash
 npm test                    # Run all tests
@@ -112,18 +145,7 @@ npm run test:coverage       # Run tests with coverage report
 npm run test:ui             # Run tests with UI
 ```
 
-### Test Coverage
-
-The project includes comprehensive unit and integration tests covering:
-
-- **Database operations**: CRUD operations, migrations, price analysis
-- **Discogs API service**: Authentication, data fetching, error handling
-- **Worker pool**: Multi-threading, task distribution, error recovery
-- **Configuration management**: Credential storage, validation
-- **Utility functions**: Formatting, date handling
-- **Integration workflows**: End-to-end sync processes
-
-### Building
+#### Building
 
 ```bash
 npm run build               # Build TypeScript
@@ -145,22 +167,23 @@ npm run dev                 # Run without building (uses tsx)
 ## Architecture
 
 ### Multi-Threading
-- **Worker pool system** for parallel API calls
-- **Configurable thread count** (default 8, up to 16+)
-- **Rate limiting** to respect Discogs API limits
-- **Exponential backoff** for failed requests
+- **Rust**: Uses tokio async runtime for concurrent API calls with configurable concurrency limits
+- **TypeScript**: Worker pool system for parallel API calls with configurable thread count (default 8, up to 16+)
+- **Rate limiting**: Respects Discogs API limits in both implementations
+- **Exponential backoff**: For failed requests
 
 ### Database Schema
-- **Automatic migrations** for schema updates
-- **Time series data** for price tracking
-- **Collection folder support** for organisation
-- **Wantlist integration** for demand analysis
+- **Automatic migrations**: For schema updates (both Rust and TypeScript)
+- **Time series data**: For price tracking
+- **Collection folder support**: For organisation
+- **Wantlist integration**: For demand analysis
 
 ### Performance
-- **8x faster sync** with multi-threading
-- **Smart caching** to avoid redundant API calls
-- **Batch processing** for large collections
-- **Memory efficient** SQLite storage
+- **Rust**: Native performance with zero-cost abstractions and efficient memory usage
+- **TypeScript**: 8x faster sync with multi-threading vs single-threaded
+- **Smart caching**: To avoid redundant API calls
+- **Batch processing**: For large collections
+- **Efficient SQLite storage**: In both implementations
 
 ## Data storage
 
