@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { DatabaseMigrator } from './migrations.js';
+import { debugDb, debug } from '../utils/logger.js';
 import type { PriceRecord, ReleaseInfo } from '../types/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -15,19 +16,24 @@ export class PriceDatabase {
     const dataDir = join(__dirname, '../../data');
     if (!existsSync(dataDir)) {
       mkdirSync(dataDir, { recursive: true });
+      debug(`Created data directory: ${dataDir}`);
     }
 
     const dbFile = dbPath || join(dataDir, 'prices.db');
+    debug(`Opening database: ${dbFile}`);
     this.db = new Database(dbFile);
     this.initialize();
   }
 
   private initialize(): void {
+    debug('Initializing database and running migrations...');
     const migrator = new DatabaseMigrator(this.db);
     migrator.migrate();
+    debugDb('Database initialized successfully');
   }
 
   addOrUpdateRelease(release: ReleaseInfo): void {
+    debugDb(`Adding/updating release: ${release.id} - ${release.title}`);
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO releases (id, title, artist, year, format, thumb_url, added_date, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -45,6 +51,7 @@ export class PriceDatabase {
   }
 
   addPriceRecord(record: PriceRecord): void {
+    debugDb(`Adding price record for release ${record.release_id}: ${record.currency} ${record.price}`);
     const stmt = this.db.prepare(`
       INSERT INTO price_history (release_id, price, currency, condition, timestamp, listing_count, wants_count)
       VALUES (?, ?, ?, ?, ?, ?, ?)
