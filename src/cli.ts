@@ -21,12 +21,16 @@ ${chalk.cyan('Examples:')}
   $ discogs-tracker sync -t 16         # Use 16 threads for faster sync
   $ discogs-tracker trends              # Show records increasing in value
   $ discogs-tracker trends -m 10        # Show records with >10% increase
+  $ discogs-tracker trends --vinyl      # Show vinyl price trends only
   $ discogs-tracker list                # List all records
+  $ discogs-tracker list --cd           # List CD releases only
+  $ discogs-tracker list -f "Cassette"  # List cassette releases only
   $ discogs-tracker history 123456      # Show price history for release
   $ discogs-tracker value               # Show collection value and stats
   $ discogs-tracker value -f            # Show value breakdown by format
   $ discogs-tracker demand              # Show high-demand and optimal sell candidates
   $ discogs-tracker demand -w 100       # Show records with >100 wants
+  $ discogs-tracker demand --vinyl      # Show vinyl demand analysis only
 `);
 
 program.addCommand(configCommand);
