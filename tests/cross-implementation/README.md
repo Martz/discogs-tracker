@@ -11,14 +11,26 @@ This directory contains integration tests that verify compatibility between the 
 - `performance.test.ts` - Performance comparison tests
 - `error-handling.test.ts` - Error handling compatibility tests
 
-## Running Tests
+# Test Scripts
 
 ```bash
-# Run all cross-implementation tests
-npm run test tests/cross-implementation
+# Run all tests
+npm test
 
-# Run specific test file
-npm run test tests/cross-implementation/cli-commands.test.ts
+# Run only unit tests (excluding cross-implementation)
+npm run test:unit
+
+# Run cross-implementation integration tests
+npm run test:cross
+
+# Run Rust-specific integration tests
+cargo test --test integration_tests
+
+# Run all Rust tests (unit + integration)
+cargo test
+
+# Run with coverage
+npm run test:coverage
 ```
 
 ## Test Framework
