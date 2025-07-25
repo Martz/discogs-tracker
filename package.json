@@ -13,7 +13,9 @@
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "test:cross": "vitest tests/cross-implementation",
+    "test:unit": "vitest tests --exclude='tests/cross-implementation/**'"
   },
   "keywords": ["discogs", "vinyl", "records", "price-tracking", "cli", "collection-tracker", "marketplace", "demand-analysis", "typescript", "sqlite"],
   "author": "",
