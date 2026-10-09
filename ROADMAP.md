@@ -8,19 +8,30 @@ Everything in this document is a recommendation, not a commitment. The [Decision
 
 **Maturity: Alpha.** This is a real TypeScript CLI (~2k LOC) with a coherent module layout (`src/cli.ts`, `commands/`, `db/`, `services/`, `types/`, `utils/`, `workers/`), strict `tsc` passing, and working config, sync, value, list, and history commands. It syncs a Discogs collection into a local SQLite database via [better-sqlite3](https://github.com/WiseLibs/better-sqlite3), fetches marketplace prices on worker threads, and reports collection value and price history.
 
-It is not beta, because: 8 of 109 tests fail; the `trends` and `demand` analysis commands likely crash on a SQL row-shape bug; there is no CI; the READMEs overclaim capabilities the code does not have; Node 24 cannot install the package; and version `1.0.0` has no releases behind it.
+It is not beta, because: 8 of 109 tests fail; the `trends` and `demand` analysis commands crash on a SQL row-shape bug whenever their queries return rows; there is no CI; the READMEs overclaim capabilities the code does not have; Node 24 cannot install the package; and version `1.0.0` has no releases behind it.
+
+Verdicts by dimension (citations for each are in [References](#references)):
+
+- **Architecture — healthy.** Commander-based CLI, `PriceDatabase` + `DatabaseMigrator` (3 migrations), worker-thread price fetcher.
+- **Code quality — needs work.** Dead dependencies, flat-row casts in the analysis queries, a queue bug in the worker pool.
+- **Tests — at risk.** 8 of 109 fail; only one command is tested, and its test re-implements the math instead of invoking the command.
+- **CI/CD — at risk.** No workflows on `main`; the `"test"` script is watch mode and would hang CI.
+- **Documentation — at risk.** The root README and 7 nested READMEs claim capabilities and methods the code does not have.
+- **Dependencies/security — at risk.** 35 vulnerabilities (5 critical), stale majors, no `engines` field.
+- **Packaging/release — at risk.** Hardcoded `1.0.0`, empty `author`, missing `repository`/`files` fields, no releases.
+- **Robustness/UX — needs work.** No 429 handling, missing input guards, plaintext token storage.
 
 ## Current capabilities
 
 Commands that work today:
 
-- `config` — set up Discogs token, username, and tracking settings (stored via `conf`; see the caveat in [Next](#next--p1-quality-and-robustness) about display masking)
+- `config` — set up Discogs token, username, and tracking settings (stored in plaintext via `conf`; `config --show` masks the token)
 - `sync` — pull collection and wants, then fetch prices through a worker-thread pool
 - `value` — total collection value and per-release pricing
 - `list` — browse the synced collection
 - `history` — price history for a release
 
-**Broken today:** `trends` and `demand`. Their analysis queries return flat SQL rows (`r.*`, `current_price`, `wants_count`), but the callers index into a nested `release` object, so `r.release.id` throws `TypeError`. See [References](#references).
+**Broken today:** `trends` and `demand`. Their analysis queries return flat SQL rows (`r.*`, `current_price`, `wants_count`), but the callers index into a nested `release` object (`r.release.id` in `trends`, `item.release.artist` in `demand`), so both commands throw `TypeError` whenever the queries return rows. See [References](#references).
 
 ## Goals and non-goals
 
@@ -40,15 +51,16 @@ Non-goals (recommended, until the decisions say otherwise):
 
 ## Now — P0 engineering foundations
 
-Highest-priority, smallest-effort items that make the project credible to change. Priority/effort per item.
+Highest-priority, smallest-effort items that make the project credible to change. Priority/effort per item. Items 1, 2, 6, and 7 together produce a green `vitest run` for CI to gate on.
 
 1. **Add CI running `vitest run` + `tsc` on push/PR, and make `"test"` non-watch.** `package.json` sets `"test": "vitest"` (watch mode), which hangs any CI that invokes it. High, small. *Moot in its vitest form if [Decision 1](#1-typescript-vs-rust-rewrite) adopts Rust — but the CI workflow itself is needed either way, only the toolchain changes.*
-2. **Fix the SQL row mapping.** `getReleasesWithPriceChange`, `getHighDemandReleases`, and `getOptimalSellCandidates` return flat rows cast `as any[]`, while `trends`/`demand` expect `{ release, currentPrice, ... }`. Mapping to the documented shape unblocks both commands and 6 failing database tests. High, medium. *Moot if Rust is adopted, since these queries are rewritten.*
+2. **Fix the SQL row mapping.** `getReleasesWithPriceChange`, `getHighDemandReleases`, and `getOptimalSellCandidates` return flat rows cast `as any[]`, while `trends`/`demand` expect `{ release, currentPrice, ... }`. Mapping to the documented shape unblocks both commands and 4 of the 6 failing database tests (the other 2 are the undefined-vs-null returns in item 6). High, medium. *Moot if Rust is adopted, since these queries are rewritten.*
 3. **Fix the worker-pool queue.** `processNextTask` posts `taskQueue[0]` to a worker without dequeuing it, and the in-flight task is not resolved when picked up — concurrent workers can duplicate the first task and callers can hang. High, small. *Moot if Rust is adopted; the Rust rewrite (Martz/discogs-tracker#9) replaces this pool.*
 4. **Drop the unused `sqlite3` and `dotenv` dependencies; add an `engines` field pinning Node 20, or upgrade better-sqlite3.** better-sqlite3@9 has no Node 24 prebuild and needs C++20 to compile, so `npm install` fails outright on current Node. High, small. *The better-sqlite3 part becomes moot under Rust.*
 5. **Resolve the `npm audit` criticals** — 5 critical vulnerabilities today (vitest, @vitest/coverage-v8, @vitest/ui, tinypool, tar), mostly in dev dependencies. High, small. *Moot under Rust's toolchain.*
-6. **Repair the failing test infrastructure:** fix the `tests/utils/config.test.ts` mock-hoisting load failure, and make `getLatestPrice`/`getReleaseInfo` return `null` (better-sqlite3 returns `undefined` for no rows, but the types promise `| null`). Medium, small.
-7. **Honest documentation.** Rewrite the root README and the 7 nested READMEs to match the code: the config directory is `discogs-price-tracker` (the `conf` project name), not `discogs-tracker`; remove claims about a 60/min rate limiter, exponential backoff, request queueing, smart caching, "8x faster", automatic migration backups, OS keychain storage, and methods that do not exist (`getRelease`, `getPriceChanges`, `getCollectionValue`, `WorkerPool.addBatch`). High, small.
+6. **Repair the failing test infrastructure:** fix the `tests/utils/config.test.ts` mock-hoisting load failure, and make `getLatestPrice`/`getReleaseInfo` return `null` (better-sqlite3 returns `undefined` for no rows, but the types promise `| null`). High, small — it gates item 1. *Moot under Rust: the test suite is rewritten.*
+7. **Fix or delete the 2 brittle `sync-workflow` tests.** Their mock-count assertions fail independently of the row-shape work and would keep the CI in item 1 red. High, small. *Moot under Rust: the test suite is rewritten.*
+8. **Honest documentation.** Rewrite the root README and the 7 nested READMEs to match the code: the config directory is `discogs-price-tracker` (the `conf` project name), not `discogs-tracker`; remove claims about a 60/min rate limiter, exponential backoff, request queueing, smart caching, "8x faster", automatic migration backups, OS keychain storage, and methods that do not exist (`getRelease`, `getPriceChanges`, `getCollectionValue`, `WorkerPool.addBatch`). High, small.
 
 ## Next — P1 quality and robustness
 
@@ -58,9 +70,9 @@ After the foundations, in rough priority order.
 - **429 handling and honest rate limiting.** Today rate limiting is 1-second sleeps between pages, folders, and batches; backoff exists only in the worker's `fetchWithRetry`. Handle `429` with `Retry-After` and spread the 60 req/min budget across all workers. Medium, medium.
 - **Input guards.** `sync` throws when a release lacks `artists[0]`/`formats[0]`; `value` divides by the record total with no empty-collection guard. Medium, small.
 - **Global `--debug` flag** — tracked as Martz/discogs-tracker#4 with a draft implementation in Martz/discogs-tracker#5. Medium, small.
-- **Token masking and disclosure.** `config --show` should mask the token to its tail, and the docs should state plainly that the token is stored in plaintext by `conf`. Medium, small.
-- **Honor `checkInterval`.** It is stored in config but never read; scheduling ignores it. Low, small.
-- **Dead-code removal.** `getCollection`/`getAllMarketplaceListings` are unused. Low, small.
+- **Token storage disclosure.** The docs should state plainly that the token is stored in plaintext by `conf`. Display masking already works: `config --show` prints `***` plus the last 4 characters (`src/commands/config.ts:16`), and `src/commands/README.md:22` documents it. Medium, small.
+- **Honor `checkInterval`.** It is displayed by `config --show`, but `sync` ignores it and hardcodes 24 hours. Low, small.
+- **Dead-code removal.** `getCollection`, `getAllMarketplaceListings`, and `getLowestMarketplacePrice` (`src/services/discogs.ts:158`) are unused in production. Low, small.
 - **Migration down-SQL plus real backups, or delete the claim.** `migrate --rollback` exists, but the documented "automatic migration backups" do not. Medium, small.
 
 ## Later — P2 product and packaging
@@ -106,7 +118,10 @@ Evidence for the claims above, all at `ba8b4a5`:
 - Null-vs-undefined returns: `src/db/database.ts:104-113` and `src/db/database.ts:126-132`
 - better-sqlite3 the only driver imported: `src/db/database.ts:1`; dead `sqlite3`/`dotenv` deps and watch-mode `"test"`: `package.json:13`, `package.json:27`, `package.json:30`
 - Data directory relative to compiled `__dirname` (breaks global installs): `src/db/database.ts:15`
-- Tests on Node 20: 101 pass / 8 fail — `tests/utils/config.test.ts` (suite fails to load, mock hoisting), `tests/db/database.test.ts` (6 failures), `tests/integration/sync-workflow.test.ts` (2 brittle mock-count failures)
+- Token masking already implemented in `config --show`: `src/commands/config.ts:16` (prints `***` plus the last 4 characters), documented in `src/commands/README.md:22`
+- `checkInterval` is read by `config --show` (`src/commands/config.ts:12`, `src/commands/config.ts:17`) but ignored by `sync`, which hardcodes 24 hours: `src/commands/sync.ts:118`
+- Unused in production: `getLowestMarketplacePrice` (`src/services/discogs.ts:158`), alongside `getCollection`/`getAllMarketplaceListings`
+- Tests on Node 20: 101 pass / 8 fail — the 8 are 6 failures in `tests/db/database.test.ts` (4 on row shape, 2 on undefined-vs-null) plus 2 brittle mock-count failures in `tests/integration/sync-workflow.test.ts`; `tests/utils/config.test.ts` fails to load entirely (mock hoisting), so its cases are not part of the 109
 - `npm audit`: 35 vulnerabilities, 5 critical (vitest, @vitest/coverage-v8, @vitest/ui, tinypool, tar)
 - No `.github` workflows on `main`; Martz/discogs-tracker#1 adds Claude bot workflows only
 - Hardcoded `1.0.0`: `package.json:3` and `src/cli.ts`; empty `author`, no `repository`/`files`/`main`/`engines`: `package.json`
